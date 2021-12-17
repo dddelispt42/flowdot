@@ -21,9 +21,10 @@ fn is_valid_hostname(hostname: &str) -> bool {
 
 fn get_ip_addresses(host: &str) -> Vec<IpAddr> {
     let mut ips: Vec<IpAddr> = vec![];
+    log::debug!("{} is valid hostname?: {}", host, is_valid_hostname(&host));
     if is_valid_hostname(&host) {
         log::debug!("Found hostname: {}", host);
-        ips = lookup_host(&host).unwrap();
+        ips = lookup_host(&host).expect("Cannot obtain IP address for host");
     } else {
         log::debug!("Found IP address: {}", host);
         if let Ok(ip) = host.parse() {

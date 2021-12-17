@@ -1,8 +1,13 @@
 use clap::Parser;
 use log::LevelFilter;
+use std::fs::File;
+use std::io;
+use std::io::prelude::*;
+use std::io::Write;
 
 mod cli;
 mod exclude;
+mod graph;
 mod model;
 mod network;
 
@@ -83,6 +88,9 @@ struct Opts {
     /// List of initial hosts
     #[clap(name = "HOST")]
     hosts: Vec<String>,
+    /// only load from file
+    #[clap(long)]
+    offline: bool,
 }
 
 fn init_logging(verbosity: i32) {
@@ -111,8 +119,18 @@ fn main() {
     log::debug!("CLI paramters: {:?}", opts);
 
     let mut model = model::Model::new();
-    for host in opts.hosts {
-        model.add_machine(&host, &opts.excludes, &opts.networks);
+    if opts.offline {
+        let mut file = File::open("model.json").unwrap();
+        let mut buffer = String::new();
+        file.read_to_string(&mut buffer).unwrap();
+        model = serde_json::from_str(&buffer).unwrap();
+    } else {
+        for host in opts.hosts {
+            model.add_machine(&host, &opts.excludes, &opts.networks);
+        }
+        let serialized = serde_json::to_string(&model).unwrap();
+        let mut file = File::create("model.json").unwrap();
+        file.write_all(serialized.as_bytes()).unwrap();
     }
     log::debug!("Model: {:?}", model);
     model.generate(&opts.output);

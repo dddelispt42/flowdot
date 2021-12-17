@@ -1,36 +1,37 @@
 use crate::cli::{get_connections, get_hostname, get_interfaces, get_processes};
 use crate::exclude::is_host_excluded;
+use crate::graph::generate_graph;
 use crate::network::is_host_in_network;
-// TODO: move into dot builder module
-use tabbycat::attributes::*;
-use tabbycat::{AttrList, Edge, GraphBuilder, GraphType, Identity, StmtList, SubGraph};
+use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::Write;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Model {
     pub machines: Vec<Machine>,
     pub connections: Vec<Connection>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Machine {
     pub hostname: String,
     pub interfaces: Vec<Interface>,
     pub processes: Vec<Process>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Interface {
     pub name: String,
     pub addresses: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Process {
     pub name: String,
     pub addresses: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Connection {
     pub host: String,
     pub process: String,
@@ -72,23 +73,17 @@ impl Model {
         self.connections.append(&mut connections);
         // TODO: call self.add_machine() with all remote hosts
         // using connection src/dest
+        for remote_host in &connections {
+            self.add_machine(&remote_host.remote_addr, &excludes, &networks);
+        }
     }
     pub fn generate(&self, filename: &Option<String>) {
-        let stmts = StmtList::new();
-        // for machine in &self.machines {
-        //     stmts.add_node(
-        //         Identity::id(&machine.hostname).unwrap(),
-        //         None,
-        //         Some(AttrList::new().add_pair(color(Color::Red))),
-        //     );
-        // }
-        let graph = GraphBuilder::default()
-            .graph_type(GraphType::DiGraph)
-            .strict(false)
-            .id(Identity::id("G").unwrap())
-            .stmts(stmts)
-            .build()
-            .unwrap();
-        println!("{}", graph);
+        let output = generate_graph(&self);
+        if let Some(filename) = filename {
+            let mut file = File::create(filename).unwrap();
+            file.write_all(output.as_bytes()).unwrap();
+        } else {
+            println!("{}", output);
+        }
     }
 }
