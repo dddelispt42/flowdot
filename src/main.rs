@@ -1,7 +1,6 @@
 use clap::Parser;
 use log::LevelFilter;
 use std::fs::File;
-use std::io;
 use std::io::prelude::*;
 use std::io::Write;
 
@@ -100,7 +99,8 @@ fn init_logging(verbosity: i32) {
         _ => LevelFilter::Debug,
     };
     let config = simplelog::ConfigBuilder::new()
-        .set_time_to_local(true)
+        .set_time_offset_to_local()
+        .expect("no locale found")
         .set_thread_mode(simplelog::ThreadLogMode::Both)
         .build();
     simplelog::TermLogger::init(
